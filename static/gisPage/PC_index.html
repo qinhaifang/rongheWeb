@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <script src="lib/jquery-3.3.1.min.js"></script>
+    <link rel="stylesheet" href="lib/openlayer_v3.20.1/ol.css">
+    <script src="lib/openlayer_v3.20.1/ol.js"></script>
+    <title>双预控PC端gis展示界面</title>
+    <style>
+        #map {
+            height: 1050px;
+            width: 100%;
+        }
+    </style>
+    <style>
+        .xbt-dynamic-layer {
+            display: none;
+            user-select: none;
+            pointer-events: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 320px;
+            height: 250px;
+            z-index: 99999;
+        }
+
+        .xbt-dynamic-layer .line {
+            position: absolute;
+            left: 0;
+            width: 0;
+            height: 100px;
+            bottom: 0;
+            background: url("pictures/line.png")
+        }
+
+        .xbt-dynamic-layer .featureBox {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 50px;
+            right: 0;
+            bottom: 100px;
+            background: url("pictures/layer_border.png") no-repeat;
+            background-size: 100% 100%;
+            color: white;
+            padding: 20px 5px 5px 20px;
+            font-size: 14px;
+            user-select: text;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body oncontextmenu="doNothing()">
+<div style="opacity: 0.8;background:#fffa7c;z-index:600;position: absolute;bottom: 300px;left: 100px;width:250px;height:250px;">
+    选择风险位置：
+    <select id="selectLoc">
+        <option value="">--||--</option>
+        <option value="ground">地面</option>
+        <option value="underground">井下</option>
+    </select>
+</div>
+<div class='xbt-dynamic-layer' id='one'>
+    <div class='line'></div>
+    <div class='featureBox'>
+    </div>
+</div>
+<div id="map"></div>
+</body>
+<script type="text/javascript">
+    function doNothing() {
+        window.event.returnValue = false;
+        return false;
+    }
+</script>
+<script type="text/javascript">
+    var locSelect;
+    var transInfoBox = document.getElementById("one");
+    var flag = false; // 标记消息框是否弹出
+    var kd910 = new ol.layer.Vector({
+        source: new ol.source.Vector({
+            format: new ol.format.GeoJSON({
+                geometryName: "the_geom"
+            }),
+            url:
+                "http://122.112.180.112:8080/geoserver/MaJunYv/ows?service=WFS" +
+                "&version=1.0.0" +
+                "&request=GetFeature" +
+                "&typeName=MaJunYv%3Ahd910Layer" +
+                "&maxFeatures=5000" +
+                "&outputFormat=application%2Fjson"
+        }),
+        style: new ol.style.Style({
+            stroke: new ol.style.Stroke({
+                color: "#0378a6",
+                width: 2
+            })
+        })
+    });
+    var groundBorder = new ol.layer.Vector({
+        source: new ol.source.Vector({
+            format: new ol.format.GeoJSON({
+                geometryName: "the_geom"
+            }),
+            url:
+                "http://122.112.180.112:8080/geoserver/MaJunYv/ows?service=WFS" +
+                "&version=1.0.0" +
+                "&request=GetFeature" +
+                "&typeName=MaJunYv%3Agroundside" +
+                "&maxFeatures=5000" +
+                "&outputFormat=application%2Fjson"
+        }),
+        style: new ol.style.Style({
+            stroke: new ol.style.Stroke({
+                color: "#de761c",
+                width: 4
+            })
+        })
+    }); // 区域轮廓
+    var groundBuilding = new ol.layer.Vector({
+        source: new ol.source.Vector({
+            format: new ol.format.GeoJSON({
+                geometryName: "the_geom"
+            }),
+            url:
+                "http://122.112.180.112:8080/geoserver/MaJunYv/ows?service=WFS" +
+                "&version=1.0.0" +
+                "&request=GetFeature" +
+                "&typeName=MaJunYv%3Agroundbuilding" +
+                "&maxFeatures=5000" +
+                "&outputFormat=application%2Fjson"
+        }),
+        style: new ol.style.Style({
+            image: new ol.style.Circle({
+                radius: 4,
+                fill: new ol.style.Fill({
+                    color: "#de5461"
+                    // 0378a6
+                })
+            }),
+            fill: new ol.style.Fill({
+                color: "#3661de"
+            })
+        })
+    }); // 区域建筑
+    var Source = new ol.source.Vector(); // 高风险
+    var level = new ol.layer.Vector({
+        source: Source
+    });
+    var heatmapSource;
+
+    var heatData = {
+        type: "FeatureCollection",
+        features: []
+    };
+
+    // 初始化一个map界面
+    var map = new ol.Map({
+        // 设置地图图层
+        layers: [
+            new ol.layer.Tile({
+                source: new ol.source.TileWMS({
+                    url: "http://122.112.180.112:8080/geoserver/MaJunYv/wms",
+                    params: {
+                        LAYERS: "MaJunYv:ShanXiprovinceArea",
+                        TILED: false
+                    },
+                    serverType: "geoserver"
+                })
+            })
+        ],
+        view: new ol.View({
+            center: [112.271442858, 36.8324869206],
+            zoom: 16,
+            projection: "EPSG:4326"
+        }),
+        target: "map",
+        controls: ol.control.defaults({
+            attributionOptions: {
+                collapsible: false
+            }
+        }),
+        logo: {
+            src: "pictures/XBTlogo.png",
+            // src: require("../../public/pictures/XBTlogo.png"),
+            href: "http://www.xinbotai.com"
+        } // 点击能跳转到对应页面
+    });
+
+    function heat(heatData) {
+        //矢量图层 获取gejson数据
+        heatmapSource = new ol.source.Vector({
+            features: new ol.format.GeoJSON().readFeatures(heatData, {
+                dataProjection: "EPSG:4326",
+                featureProjection: "EPSG:4326"
+            })
+        });
+        // Heatmap热力图
+        var heatmapLayer = new ol.layer.Heatmap({
+            source: heatmapSource,
+            blur: 20,
+            radius: 20
+        });
+        map.addLayer(heatmapLayer);
+    }
+
+    // ajax请求要素，调用回调函数
+    function loadAjax(layerName, callBackFunction) {
+        $.ajax({
+            url:
+                "http://122.112.180.112:8080/geoserver/MaJunYv/ows?service=WFS" +
+                "&version=1.0.0" +
+                "&request=GetFeature" +
+                "&typeName=MaJunYv%3A" +
+                layerName +
+                "&maxFeatures=5000" +
+                "&outputFormat=application%2Fjson",
+            cache: false,
+            async: false,
+            success: callBackFunction
+            // error: function(data) {
+            //   console.log("Error:  ", data);
+            // }
+        });
+    }
+
+    function viewFlyTo(cood) {
+        var view = new ol.View({
+            center: [cood.lng, cood.lat],
+            zoom: cood.zoom, // 定义地图显示层级为2
+            projection: "EPSG:4326"
+        });
+        map.setView(view);
+    }
+
+    // 加载栅格瓦片，返回图层对象
+    function loadWMTSLayer() {
+        var gridsetName = "EPSG:4326";
+        var gridNames = [
+            "EPSG:4326:10",
+            "EPSG:4326:11",
+            "EPSG:4326:12",
+            "EPSG:4326:13",
+            "EPSG:4326:14",
+            "EPSG:4326:15",
+            "EPSG:4326:16",
+            "EPSG:4326:17",
+            "EPSG:4326:18",
+            "EPSG:4326:19"
+        ];
+        var baseUrl = "http://122.112.180.112:8080/geoserver/gwc/service/wmts";
+        var style = "";
+        var format = "image/png";
+        var layerName = "MaJunYv:majunyv_Raster";
+        var projection = new ol.proj.Projection({
+            code: "EPSG:4326",
+            units: "degrees",
+            axisOrientation: "neu"
+        });
+        var resolutions = [
+            6.866455078125e-4,
+            3.4332275390625e-4,
+            1.71661376953125e-4,
+            8.58306884765625e-5,
+            4.291534423828125e-5,
+            2.1457672119140625e-5,
+            1.0728836059570312e-5,
+            5.364418029785156e-6,
+            2.682209014892578e-6,
+            1.341104507446289e-6
+        ];
+        var baseParams = [
+            "VERSION",
+            "LAYER",
+            "STYLE",
+            "TILEMATRIX",
+            "TILEMATRIXSET",
+            "SERVICE",
+            "FORMAT"
+        ];
+
+        var params = {
+            VERSION: "1.0.0",
+            LAYER: layerName,
+            STYLE: style,
+            TILEMATRIX: gridNames,
+            TILEMATRIXSET: gridsetName,
+            SERVICE: "WMTS",
+            FORMAT: format
+        };
+
+        function constructSource() {
+            var url = baseUrl + "?";
+            for (var param in params) {
+                if (baseParams.indexOf(param.toUpperCase()) < 0) {
+                    url = url + param + "=" + params[param] + "&";
+                }
+            }
+            url = url.slice(0, -1);
+            return new ol.source.WMTS({
+                url: url,
+                layer: params["LAYER"],
+                matrixSet: params["TILEMATRIXSET"],
+                format: params["FORMAT"],
+                projection: projection,
+                tileGrid: new ol.tilegrid.WMTS({
+                    tileSize: [256, 256],
+                    extent: [
+                        112.28028012283869,
+                        36.834406880342726,
+                        112.28885847634137,
+                        36.84746840699927
+                    ],
+                    origin: [-180.0, 90.0],
+                    resolutions: resolutions,
+                    matrixIds: params["TILEMATRIX"]
+                }),
+                style: params["STYLE"],
+                wrapX: true
+            });
+        }
+
+        return new ol.layer.Tile({
+            source: constructSource()
+        });
+    }
+
+    // 栅格图层
+    var rasterLayer = loadWMTSLayer();
+
+    function checkLayer() {
+        transInfoBox.style.display = "none";
+        // 巷道中心点 112.27675923, 36.833577537
+        map.removeLayer(groundBuilding);
+        map.removeLayer(groundBorder);
+        map.removeLayer(rasterLayer);
+        if (locSelect == "ground") {
+            viewFlyTo({
+                lng: 112.284780552,
+                lat: 36.841365671,
+                zoom: 17
+            });
+            map.removeLayer(kd910);
+            map.addLayer(rasterLayer);
+            map.addLayer(groundBuilding);
+            map.addLayer(groundBorder);
+            loadRisk("riskground");
+        } else if (locSelect == "underground") {
+            viewFlyTo({
+                lng: 112.27675923,
+                lat: 36.833577537,
+                zoom: 16
+            });
+            map.addLayer(kd910);
+            loadRisk("riskunderground");
+        } else {
+            map.removeLayer(groundBuilding);
+            map.removeLayer(groundBorder);
+            map.removeLayer(rasterLayer);
+            map.removeLayer(kd910);
+        }
+    }
+
+    function selectLoc() {
+        locSelect = $("#selectLoc")
+            .children("option:selected")
+            .val();
+        Source.clear();
+        checkLayer();
+    }
+
+    $("#selectLoc").change(selectLoc);
+
+    // 消息框样式、跟随地图位移、展开动画
+    function changeStyle(element, coor, callback) {
+        element.css({opacity: 0});
+        $(".xbt-dynamic-layer .line").css({width: 0});
+        element.find(".featureBox").hide(0);
+        transInfoBox.style.display = "none";
+        callback();
+
+        map.on("moveend", function (e) {
+            if (flag) {
+                callback();
+                var size = e.frameState.size;
+                var pixel = map.getPixelFromCoordinate(coor);
+                console.log(size);
+                console.log(pixel[0], pixel[1]);
+                if (pixel[0] > 0 && pixel[0] < size[0] && pixel[1] > 0 && pixel[1] < size[1]) {
+                    transInfoBox.style.display = "inline";
+                } else {
+                    transInfoBox.style.display = "none";
+                }
+            }
+        });
+
+        element.find(".line").animate(
+            {
+                width: 50 //线的宽度
+            },
+            500,
+            function () {
+                element.find(".featureBox").fadeIn(500);
+            }
+        );
+
+        element.css({opacity: 1});
+    }
+
+    // 给要素渲染图标、标注
+    function setFeatureStyle(feature, location, png) {
+        var image = new Image(200, 200);
+        image.src = png;
+        feature.setStyle(
+            new ol.style.Style({
+                text: new ol.style.Text({
+                    font: 19 + "px Calibri,sans-serif",
+                    text: location,
+                    fill: new ol.style.Fill({
+                        color: "#ff4d00"
+                    }),
+                    offsetY: 40,
+                    stroke: new ol.style.Stroke({
+                        color: "#fff156",
+                        width: 0.4
+                    })
+                }),
+                image: new ol.style.Icon({
+                    img: image,
+                    imgSize: [127, 127],
+                    scale: 1 //图标缩放比例
+                })
+            })
+        );
+    }
+
+    function loadRisk(layerName) {
+        loadAjax(layerName, function (data) {
+            var fea = data.features;
+            var heatMapData = [];
+            for (var i = 0; i < fea.length; i++) {
+                var pointcode = fea[i].properties.pointcode;
+                var featureName = fea[i].properties.location;
+                var featureId = "risklocat" + (i * 1 + 1);
+                var feature = new ol.Feature({
+                    geometry: new ol.geom.Point([
+                        fea[i].properties.point_x,
+                        fea[i].properties.point_y
+                    ]),
+                    name: featureName
+                });
+                heatMapData.push({
+                    type: "Point",
+                    coordinates: [fea[i].properties.point_x, fea[i].properties.point_y],
+                    count: Number(3) * 100
+                });
+                // 向图形添加相关信息
+                feature.f = featureId;
+                feature.H.point_x = fea[i].properties.point_x;
+                feature.H.point_y = fea[i].properties.point_y;
+                feature.H.pointcode = pointcode;
+                feature.H.location = featureName;
+
+                var url = "pictures/ppp.png";
+                // var url = require("../../public/pictures/ppp.png");
+                setFeatureStyle(feature, featureName, url);
+                Source.addFeatures([feature]);
+            }
+            // 将风险图层添加到地图中
+            map.addLayer(level);
+            heatData.features = heatMapData;
+            if (heatmapSource) {
+                heatmapSource.clear();
+            }
+            heat(heatData);
+        });
+    }
+
+    // 监听地图的点击事件
+    map.on("click", function (e) {
+        flag = true;
+        var layerElement = $("#one");
+        var pixel = map.getEventPixel(e.originalEvent);
+        // 过滤点击的要素
+        var featureInfo = map.forEachFeatureAtPixel(pixel, function (feature) {
+            if (feature.a == "the_geom" || feature.f == undefined) {
+                return undefined;
+            } else {
+                return {feature: feature};
+            }
+        });
+
+        if (
+            featureInfo !== undefined &&
+            featureInfo !== null &&
+            featureInfo.feature !== undefined
+        ) {
+            var coor = [
+                featureInfo.feature.H.point_x,
+                featureInfo.feature.H.point_y
+            ];
+
+            changeStyle(layerElement, coor, function () {
+                var pixel = map.getPixelFromCoordinate(coor);
+                layerElement.css({
+                    left: pixel[0],
+                    top: pixel[1] - 250
+                });
+                layerElement
+                    .find(".featureBox")
+                    .html(
+                        "点选查询：<br>" +
+                        "SID：" +
+                        featureInfo.feature.f +
+                        "," +
+                        "<br>位置：" +
+                        featureInfo.feature.H.location +
+                        ",<br>风险位置编码：" +
+                        featureInfo.feature.H.pointcode
+                    );
+                transInfoBox.style.display = "inline";
+            });
+        } else {
+            flag = false;
+            transInfoBox.style.display = "none";
+        }
+    });
+</script>
+</html>

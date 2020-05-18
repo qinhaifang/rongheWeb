@@ -1,45 +1,54 @@
 <template>
     <div>
-      <el-menu
-        :default-active="$route.path"
-        class="el-menu-vertical-demo"
-        @open="handleOpen"
-        @close="handleClose"
-        background-color="#0f0d31"
-        text-color="#fff"
-        active-text-color="#ffd04b"
-        router
-      >
-        <template v-for="(item,index) in navMenu">
-          <template v-if="item.children.length !== 0">
-            <el-submenu :index="String(index)" @click="handleClick(index)">
-              <template slot="title">
-                <i :class="item.icon"></i>
-                <span>{{item.name}}</span>
-              </template>
-              <el-menu-item-group>
-                <template v-for="child in item.children">
-                  <el-menu-item :index="child.path" >
-                    <i :class="child.icon"></i>
-                    <span>{{child.name}}</span>
-                  </el-menu-item>
-                </template>
-              </el-menu-item-group>
-            </el-submenu>
-          </template>
-          <template v-else>
-            <el-menu-item :index="item.path">
-              <i :class="item.icon"></i>
-              <span slot="title">{{item.name}}</span>
-            </el-menu-item>
-          </template>
-        </template>
-      </el-menu>
-      <!--<ul>-->
-        <!--<li @click="handleClick(1)">首页</li>-->
-        <!--<li @click="handleClick(2)">列表页</li>-->
-        <!--<li @click="handleClick(3)">详情页</li>-->
-      <!--</ul>-->
+      <!--<el-menu-->
+        <!--:default-active="$route.path"-->
+        <!--class="el-menu-vertical-demo"-->
+        <!--@open="handleOpen"-->
+        <!--@close="handleClose"-->
+        <!--background-color="#0f0d31"-->
+        <!--text-color="#fff"-->
+        <!--active-text-color="#ffd04b"-->
+        <!--router-->
+      <!--&gt;-->
+        <!--<template v-for="(item,index) in navMenus">-->
+          <!--<template v-if="item.children.length !== 0">-->
+            <!--<el-submenu :index="String(index)" @click="handleClick(index)">-->
+              <!--<template slot="title">-->
+                <!--<i :class="item.icon"></i>-->
+                <!--<span>{{item.name}}</span>-->
+              <!--</template>-->
+              <!--<el-menu-item-group>-->
+                <!--<template v-for="child in item.children">-->
+                  <!--<el-menu-item :index="child.path" >-->
+                    <!--<i :class="child.icon"></i>-->
+                    <!--<span>{{child.name}}</span>-->
+                  <!--</el-menu-item>-->
+                <!--</template>-->
+              <!--</el-menu-item-group>-->
+            <!--</el-submenu>-->
+          <!--</template>-->
+          <!--<template v-else>-->
+            <!--<el-menu-item :index="item.path">-->
+              <!--<i :class="item.icon"></i>-->
+              <!--<span slot="title">{{item.name}}</span>-->
+            <!--</el-menu-item>-->
+          <!--</template>-->
+        <!--</template>-->
+      <!--</el-menu>-->
+      <ul class="navMenu" v-for="(item,index) in navMenu">
+        <li @click="handleClick(index)" ><i class="iconfont">{{item.icon}}</i>{{item.name}}</li>
+        <!--<li @click="handleClick(2)"><i class="iconfont">&#xe657;-->
+        <!--</i>区域</li>-->
+        <!--<li @click="handleClick(3)"><i class="iconfont">&#xe796;</i>安全</li>-->
+        <!--<li @click="handleClick(4)"><i class="iconfont">&#xe636;</i>人员</li>-->
+        <!--<li @click="handleClick(4)"><i class="iconfont">&#xe647;</i>矿压</li>-->
+        <!--<li @click="handleClick(4)"><i class="iconfont">&#xe649;</i>生产</li>-->
+        <!--<li @click="handleClick(4)"><i class="iconfont">&#xe60b;</i>水文</li>-->
+        <!--<li @click="handleClick(4)"><i class="iconfont">&#xe509;</i>产量</li>-->
+        <!--<li @click="handleClick(4)"><i class="iconfont">&#xe7c8;</i>应急救援</li>-->
+        <!--<li @click="handleClick(4)"><i class="iconfont">&#xe616;</i>基础信息</li>-->
+        <!--<li @click="handleClick(4)"><i class="iconfont">&#xe635;</i>设置</li>-->
+      </ul>
     </div>
 </template>
 
@@ -48,7 +57,7 @@
         components: {},
         data(){
             return {
-              navMenu:[
+              navMenus:[
                 {path:'/zh',icon:'el-icon-menu',name:'综合',children:[]},
                 {path:'/area',icon:'el-icon-menu',name:'区域',children:[]},
                 {path:'/safe',icon:'el-icon-menu',name:'安全',children:[]},
@@ -87,6 +96,19 @@
 
                   ]
                 },
+              ],
+              navMenu:[
+                {name:'综合',icon:'\ue64f'},
+                {name:'区域',icon:'\ue657'},
+                {name:'安全',icon:'\ue796'},
+                {name:'人员',icon:'\ue636'},
+                {name:'矿压',icon:'\ue647'},
+                {name:'生产',icon:'\ue649'},
+                {name:'水文',icon:'\ue60b'},
+                {name:'产量',icon:'\ue509'},
+                {name:'应急救援',icon:'\ue7c8'},
+                {name:'基础信息',icon:'\ue616'},
+                {name:'设置',icon:'\ue635'},
               ]
             }
         },
@@ -95,7 +117,6 @@
         },
         methods: {
           handleClick(n){
-            console.log('leftBar',n)
             this.$emit("handleToggle",n)
           },
           handleOpen(key, keyPath) {
@@ -111,5 +132,17 @@
 <style scoped>
   .el-menu{
     background: #0e2443!important;
+  }
+  .navMenu li{
+    height: 50px;
+    line-height: 50px;
+    text-align: justify;
+    padding-left: 20%;
+    cursor: pointer;
+
+  }
+  .navMenu li i{
+    font-size: 18px;
+    padding-right: 10px;
   }
 </style>

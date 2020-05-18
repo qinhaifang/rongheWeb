@@ -18,7 +18,7 @@ export default new Router({
         },
         {
           path: '/area',
-          component: resolve => require(['../views/area.vue'],resolve),
+          component: resolve => require(['../views/area/area.vue'],resolve),
           meta: {title: '区域'}
         },
         {

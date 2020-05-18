@@ -26,23 +26,26 @@
 import HomeHeader from '@/components/header'
 import LeftBar from '@/components/leftBar'
 import CrossHistogram from '@/components/crossHistogram'
-import left from '@/views/zh/left'
+import ZhLeft from '@/views/zh/left'
 import right from '@/views/zh/right'
 import bottom from '@/views/zh/bottom'
+import QyLeft from '@/views/area/left'
+
     export default{
         components: {
           HomeHeader,
           LeftBar,
           CrossHistogram,
-          left,
+          ZhLeft,
           right,
-          bottom
+          bottom,
+          QyLeft
         },
         data(){
             return {
               src:"../static.gisPage/PC_index.html",
               height:window.innerHeight-80+'px',
-              currentLeft:'left',
+              currentLeft:'ZhLeft',
               currentRight:'right',
               currentBottom:'bottom'
             }
@@ -57,13 +60,17 @@ import bottom from '@/views/zh/bottom'
           togglePage(n){
             console.log('index',n)
             switch(n) {
+              case 0:
+                this.currentLeft = "ZhLeft";
+                this.currentRight = "right";
+                this.currentBottom = "bottom";
+                break;
               case 1:
-                this.currentLeft = "left";
+                this.currentLeft = "QyLeft";
+                this.currentRight = "ZhLeft";
+                this.currentBottom = "bottom";
                 break;
               case 2:
-                this.currentLeft = "right";
-                break;
-              case 3:
                 this.currentLeft = "right";
                 break;
             }
@@ -96,15 +103,18 @@ import bottom from '@/views/zh/bottom'
     background-size: 100% 100%;
   }
   .leftBox{
-    width: 22%;
+    width: 21%;
     position: absolute;
     left: 0;
     top: 0;
     border:1px solid #345f92;
     background: #0e2443;
+    padding: 10px;
+    height: 100%;
+    overflow: hidden;
   }
   .rightBox{
-    width: 22%;
+    width: 21%;
     position: absolute;
     right: 15px;
     top:0;
@@ -112,9 +122,9 @@ import bottom from '@/views/zh/bottom'
     background: #0e2443;
   }
   .bottomBox{
-    width: 53%;
+    width: 54%;
     position: absolute;
-    bottom: 1.5%;
+    bottom: 0;
     left: 23%;
     border: 1px solid #345f92;
     background: #0e2443;
